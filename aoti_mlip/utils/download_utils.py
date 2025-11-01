@@ -1,27 +1,30 @@
 import logging
 import os
-
-import requests
+import shutil
+import urllib.request
 
 logger = logging.getLogger(__name__)
 
 
-def download_file(url: str, output_path: str):
+def download_file(url: str, output_path: str, timeout: int = 30):
     """
     A wrapper around requests.get to download a file from a URL.
 
     Args:
         url (str): The URL to download the file from.
         output_path (str): The path to save the downloaded file to.
+        timeout (int): The timeout for the download in seconds.
     """
 
     logger.info(f"Downloading file from {url} to {output_path}")
-    response = requests.get(url)
-    response.raise_for_status()  # Check if the request was successful
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "wb") as f:
-        f.write(response.content)
-    logger.info(f"File downloaded to {output_path}")
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp, open(output_path, "wb") as f:
+            shutil.copyfileobj(resp, f)  # streams without loading whole file into memory
+            logger.info(f"File downloaded to {output_path}")
+    except Exception as e:
+        logger.error(f"Error downloading file from {url}: {e}")
+        raise e
 
 
 def download_mattersim_checkpoint(
