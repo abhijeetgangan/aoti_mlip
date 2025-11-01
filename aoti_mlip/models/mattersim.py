@@ -1,9 +1,4 @@
-"""M3GNet model.
-
-A wrapper class for the M3GNet force field model.
-"""
-
-# ruff: noqa: FBT001, FBT002, FBT003
+"""M3GNet model."""
 
 from typing import Any
 

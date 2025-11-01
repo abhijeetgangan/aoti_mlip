@@ -6,21 +6,24 @@ import numpy as np
 from ase.build import bulk
 from mattersim.forcefield.potential import MatterSimCalculator
 
-from aoti_mlip.calculator import MatterSimCalculator as aoti_MatterSimCalculator
+from aoti_mlip.calculators.mattersim import MatterSimCalculator as aoti_MatterSimCalculator
 
-MODEL = "1M"
 SCRIPT_DIR = os.path.dirname(__file__)
-MODEL_PATH = os.path.join(os.getcwd(), f"model_checkpoints/mattersim_cuda_{MODEL}.pt2")
-OUT_JSON_AOTI = os.path.join(SCRIPT_DIR, f"timings_cuda_aoti_mattersim_{MODEL}.json")
-OUT_JSON_TORCH = os.path.join(SCRIPT_DIR, f"timings_cuda_torchscript_mattersim_{MODEL}.json")
+BASE_PATH = "~/.local/mattersim/pretrained_models/"
+MODEL_NAME = "mattersim-v1.0.0-1M.pth"
+MODEL_PATH = os.path.expanduser(f"{BASE_PATH}/{MODEL_NAME}")
+PACKAGE_PATH = os.path.expanduser(f"{BASE_PATH}/{MODEL_NAME.replace('.pth', '.pt2')}")
+OUT_JSON_AOTI = os.path.join(
+    SCRIPT_DIR, f"timings_cuda_aoti_{MODEL_NAME.replace('.pth', '').replace('/', '_')}.json"
+)
+OUT_JSON_TORCH = os.path.join(
+    SCRIPT_DIR, f"timings_cuda_torchscript_{MODEL_NAME.replace('.pth', '').replace('/', '_')}.json"
+)
 PERIODIC = True
 N_CALLS = 100
-aoti_calculator = aoti_MatterSimCalculator(model_path=MODEL_PATH, device="cuda")
+aoti_calculator = aoti_MatterSimCalculator(model_path=PACKAGE_PATH, device="cuda")
 calculator = MatterSimCalculator(
-    load_path=f"mattersim-v1.0.0-{MODEL}.pth",
-    device="cuda",
-    compute_stress=True,
-    compute_force=True,
+    load_path=MODEL_PATH, device="cuda", compute_stress=True, compute_force=True
 )
 atoms_1 = bulk("Fe", "bcc", a=2.86, cubic=True)
 atoms_1.calc = aoti_calculator
@@ -72,9 +75,13 @@ for N in test_sizes:
 aoti_timings = {}
 original_timings = {}
 N_multiples_aoti = (
-    [1, 2, 3, 4, 5, 6, 7, 8, 9] if MODEL == "5M" else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    if MODEL_NAME == "mattersim-v1.0.0-5M.pth"
+    else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
 )
-N_multiples_original = [1, 2, 3, 4, 5, 6, 7] if MODEL == "5M" else [1, 2, 3, 4, 5, 7, 8, 9]
+N_multiples_original = (
+    [1, 2, 3, 4, 5, 6, 7] if MODEL_NAME == "mattersim-v1.0.0-5M.pth" else [1, 2, 3, 4, 5, 7, 8, 9]
+)
 for N in N_multiples_aoti:
     print(f"Testing {N}x{N}x{N} structure ({2 * N**3} atoms)")
     atoms_1 = bulk("Fe", "bcc", a=2.86, cubic=True).repeat((N, N, N))

@@ -6,7 +6,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LogFormatter, LogLocator
 
-MODEL = "1M"
+MODEL = "mattersim-v1.0.0-5M.pth"
 
 
 def load_timings(path: str) -> dict[str, Any]:
@@ -62,9 +62,15 @@ def plot_timings(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Load and plot timing results")
     default_dir = os.path.dirname(__file__)
-    default_aoti = os.path.join(default_dir, f"timings_cuda_aoti_mattersim_{MODEL}.json")
-    default_torch = os.path.join(default_dir, f"timings_cuda_torchscript_mattersim_{MODEL}.json")
-    default_png = os.path.join(os.getcwd(), f"mattersim_timings_cuda_{MODEL}.png")
+    default_aoti = os.path.join(
+        default_dir, f"timings_cuda_aoti_{MODEL.replace('.pth', '').replace('/', '_')}.json"
+    )
+    default_torch = os.path.join(
+        default_dir, f"timings_cuda_torchscript_{MODEL.replace('.pth', '').replace('/', '_')}.json"
+    )
+    default_png = os.path.join(
+        os.getcwd(), f"mattersim_timings_cuda_{MODEL.replace('.pth', '').replace('/', '_')}.png"
+    )
     parser.add_argument("--aoti", default=None, help="Path to aoti-only timings JSON")
     parser.add_argument(
         "--torch", dest="torch_path", default=None, help="Path to torch-only timings JSON"
