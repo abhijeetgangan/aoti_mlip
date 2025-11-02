@@ -8,7 +8,7 @@ from aoti_mlip.calculators.mattersim import MatterSimCalculator as aoti_MatterSi
 from aoti_mlip.utils.aoti_compile import compile_mattersim
 
 try:
-    from mattersim.forcefield.potential import MatterSimCalculator
+    from mattersim.forcefield.potential import MatterSimCalculator  # type: ignore[attr-defined]
 except ImportError as err:
     raise ImportError("Mattersim is not installed") from err
 
