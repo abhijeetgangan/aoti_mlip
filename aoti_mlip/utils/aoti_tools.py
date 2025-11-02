@@ -1,10 +1,8 @@
-"""Utility helpers for FX tracing and model compilation.
+# Third-party notice
+# Some FX tracing patterns and utilities for AOTInductor are adapted from NequIP
+# (https://github.com/mir-group/nequip) under the MIT license.
 
-This module provides small helpers to:
-- toggle FX duck-shaping when symbolically tracing models,
-- build symbolic FX graphs for given inputs, and
-- prepare models for compilation (freeze grads, eval mode, device placement).
-"""
+"""Utility helpers for FX tracing and model compilation."""
 
 import contextlib
 

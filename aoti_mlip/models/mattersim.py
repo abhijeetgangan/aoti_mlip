@@ -1,4 +1,9 @@
-"""M3GNet model wrappers and forward utilities."""
+# Third-party notice
+# Portions of this module and its transitive dependencies are adapted from
+# microsoft/mattersim (https://github.com/microsoft/mattersim).
+# See third_party/mattersim/LICENSE for the original license terms.
+
+"""M3GNet model wrappers"""
 
 from typing import Any
 

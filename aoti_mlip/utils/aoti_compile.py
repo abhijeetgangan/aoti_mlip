@@ -5,7 +5,7 @@ import torch
 
 from aoti_mlip.models.mattersim import M3GnetModel, M3GnetWrapper
 from aoti_mlip.utils.aoti_tools import model_make_fx, prepare_model_for_compile
-from aoti_mlip.utils.batch_info import get_example_inputs, mattersim_dynamic_shapes
+from aoti_mlip.utils.batch_info import MATTERSIM_DYNAMIC_SHAPES, get_example_inputs
 from aoti_mlip.utils.download_utils import download_mattersim_checkpoint
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ def compile_mattersim(
     exported_model = torch.export.export(
         fx_model,
         example_inputs,
-        dynamic_shapes=mattersim_dynamic_shapes,
+        dynamic_shapes=MATTERSIM_DYNAMIC_SHAPES,
     )
     _AOT_METADATA_KEY = "aot_inductor.metadata"
     INDUCTOR_CFG = {

@@ -15,7 +15,7 @@ pbc_offset_dim = torch.export.dynamic_shapes.Dim("num_edges", min=1, max=torch.i
 three_body_dim = torch.export.dynamic_shapes.Dim("num_three_body", min=1, max=torch.inf)  # type: ignore
 
 # Dynamic shapes for each argument
-mattersim_dynamic_shapes = (
+MATTERSIM_DYNAMIC_SHAPES = (
     {0: node_dim, 1: torch.export.Dim.STATIC},  # atom_pos [num_atoms, 3]
     {
         0: torch.export.Dim.STATIC,

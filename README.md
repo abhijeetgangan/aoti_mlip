@@ -16,3 +16,9 @@ git clone https://github.com/abhijeetgangan/aoti_mlip.git
 cd aoti_mlip
 pip install .
 ```
+
+## License and third‑party notices
+
+- Project license: MIT [LICENSE](LICENSE)
+- Third‑party: Mattersim v1.2.0 — MIT. See [third_party/mattersim/LICENSE](third_party/mattersim/LICENSE) and upstream at [microsoft/mattersim v1.2.0](https://github.com/microsoft/mattersim/tree/v1.2.0).
+- Third‑party: NequIP — MIT. See [third_party/nequip/LICENSE](third_party/nequip/LICENSE) and upstream at [mir-group/nequip](https://github.com/mir-group/nequip).

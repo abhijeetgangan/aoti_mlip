@@ -41,6 +41,13 @@ test = [
 include = ["aoti_mlip*"]
 exclude = ["example*"]
 
+[tool.setuptools]
+license-files = [
+    "LICENSE",
+    "third_party/mattersim/LICENSE",
+    "third_party/nequip/LICENSE",
+]
+
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
