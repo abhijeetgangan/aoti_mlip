@@ -48,4 +48,4 @@ def test_aot_matches_ase_energy():
     atoms.calc = MatterSimCalculator(model_path=pkg_path, device="cpu")
     energy_ase = float(atoms.get_potential_energy())
 
-    assert pytest.approx(energy_aot, rel=0, abs=1e-3) == energy_ase
+    assert pytest.approx(energy_aot, rel=0, abs=1e-4) == energy_ase
