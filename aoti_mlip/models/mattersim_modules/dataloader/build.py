@@ -12,13 +12,26 @@ from aoti_mlip.models.mattersim_modules.dataloader.converter import GraphConvert
 def batch_to_dict(
     graph_batch: Any,
 ) -> dict[str, torch.Tensor]:
-    """Convert a graph batch to a dictionary of tensors.
+    """Convert a PyTorch Geometric graph batch to a dictionary of tensors expected by the model.
 
     Args:
-        graph_batch: The graph batch to convert
+        graph_batch: A batched graph object containing
+            attributes used by the MatterSim model.
 
     Returns:
-        Dictionary containing the graph tensors
+        A dictionary with keys and typical shapes:
+        - "atom_pos": float32 tensor [num_atoms, 3]
+        - "cell": float32 tensor [1, 3, 3]
+        - "pbc_offsets": float32 tensor [num_edges, 3]
+        - "atom_attr": float32 tensor [num_atoms, 1]
+        - "edge_index": int64 tensor [2, num_edges]
+        - "three_body_indices": int64 tensor [num_three_body, 2]
+        - "num_three_body": int64/float tensor [1]
+        - "num_bonds": int64/float tensor [1]
+        - "num_triple_ij": int64/float tensor [num_edges, 1]
+        - "num_atoms": int64/float tensor [1]
+        - "num_graphs": int64/float scalar tensor
+        - "batch": int64 tensor [num_atoms]
     """
     atom_pos = graph_batch.atom_pos
     cell = graph_batch.cell
@@ -64,22 +77,22 @@ def build_dataloader(
     num_workers: int = 0,
     pin_memory: bool = False,  # noqa: FBT001, FBT002
 ) -> DataLoader_pyg:
-    """Build a dataloader given a list of atoms.
+    """Build a PyTorch Geometric dataloader from atomic structures.
 
     Args:
-        positions: A list of atomic positions (np.ndarray) with unit Å
-        cell: A list of cell vectors (np.ndarray) with unit Å
-        pbc: A list of pbc flags (np.ndarray)
-        atomic_numbers: A list of atomic numbers (np.ndarray)
-        cutoff: Cutoff radius for neighbor finding
-        threebody_cutoff: Cutoff radius for three-body interactions
-        batch_size: Number of graphs in each batch
-        shuffle: Whether to shuffle the dataset
-        num_workers: Number of workers for dataloader
-        pin_memory: If True, the datasets will be stored in GPU or CPU memory
+        positions_list: List of arrays of atomic positions, each [N_i, 3].
+        cell_list: List of cell tensors/arrays for each structure, each [3, 3].
+        pbc_list: List of periodic boundary condition flags for each structure, each [3] bools.
+        atomic_numbers_list: List of arrays of atomic numbers for each structure, each [N_i].
+        cutoff: Radial cutoff for neighbor finding.
+        threebody_cutoff: Cutoff for three-body interactions.
+        batch_size: Number of structures per batch.
+        shuffle: Whether to shuffle the dataset.
+        num_workers: Number of worker processes for data loading.
+        pin_memory: If True, enable pinned memory for faster host-to-device transfer.
 
     Returns:
-        A PyTorch Geometric DataLoader object
+        A ``torch_geometric.loader.DataLoader`` yielding batched graph objects.
     """
     converter = GraphConverter(
         cutoff,

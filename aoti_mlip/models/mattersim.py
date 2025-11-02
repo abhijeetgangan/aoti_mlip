@@ -1,4 +1,4 @@
-"""M3GNet model."""
+"""M3GNet model wrappers and forward utilities."""
 
 from typing import Any
 
@@ -23,12 +23,14 @@ class M3GnetModel(nn.Module):
         """Initialize the potential.
 
         Args:
-            model: A force field model
-            device: Device to run on
-            allow_tf32: Whether to allow TF32 precision
-            compute_force: Whether to compute forces
-            compute_stress: Whether to compute stresses
-            **kwargs: Additional arguments
+            model: State dict and configuration for the pretrained M3GNet model.
+                Expected keys include ``"model_args"`` (constructor kwargs) and
+                ``"model"`` (state dict).
+            device: Device to run on, e.g. ``"cuda"``, ``"cuda:0"``, or ``"cpu"``.
+            allow_tf32: Enable TF32 matmul on CUDA backends for speed at slight precision loss.
+            compute_force: If True, compute forces via autograd during forward.
+            compute_stress: If True, compute stress via autograd during forward.
+            **kwargs: Ignored; present for forward compatibility.
         """
         super().__init__()
         torch.backends.cuda.matmul.allow_tf32 = allow_tf32
@@ -50,13 +52,16 @@ class M3GnetModel(nn.Module):
         """Forward pass.
 
         Args:
-            input_dict: Dictionary containing necessary info.
-                   The `batch_to_dict` method could convert a graph_batch from
-                   pyg dataloader to the input dictionary.
-            dataset_idx: Used for multi-head model, set to -1 by default
+            input_dict: Model inputs as a dictionary. Typical keys include
+                ``atom_pos`` [N, 3], ``cell`` [1, 3, 3], ``pbc_offsets`` [E, 3],
+                ``atom_attr`` [N, 1], ``edge_index`` [2, E], ``three_body_indices`` [T, 2],
+                and associated counters/indices used by the model.
+            dataset_idx: Optional dataset selector for multi-head models; ``-1`` uses default.
 
         Returns:
-            Dictionary containing energies, forces and stresses
+            Dict with at least ``{"energy": Tensor[...]}``. If ``compute_force`` was set
+            during initialization, includes ``"forces"``. If ``compute_stress`` was set,
+            includes ``"stress"``. Returned tensors are detached from autograd.
         """
         # Move input tensors to device
         for key, value in input_dict.items():
@@ -143,7 +148,12 @@ class M3GnetWrapper(torch.nn.Module):
     """Wrap the M3GNet model to accept flat tensor arguments instead of a dict."""
 
     def __init__(self, m3gnet_model):
-        """Initialize with an underlying M3GNet model instance."""
+        """Initialize with an underlying M3GNet model instance.
+
+        Args:
+            m3gnet_model: An instance of :class:`M3GnetModel` (or compatible) that
+                accepts an input dictionary and returns a results dictionary.
+        """
         super().__init__()
         self.model = m3gnet_model
 
@@ -162,8 +172,25 @@ class M3GnetWrapper(torch.nn.Module):
         num_graphs,
         batch,
     ):
-        """Forward pass with individual tensor arguments."""
-        # Reconstruct the dictionary internally
+        """Forward pass with individual tensor arguments.
+
+        Args:
+            atom_pos: Tensor [N, 3]
+            cell: Tensor [1, 3, 3]
+            pbc_offsets: Tensor [E, 3]
+            atom_attr: Tensor [N, 1]
+            edge_index: LongTensor [2, E]
+            three_body_indices: LongTensor [T, 2]
+            num_three_body: Tensor [1]
+            num_bonds: Tensor [1]
+            num_triple_ij: Tensor [E, 1]
+            num_atoms: Tensor [1]
+            num_graphs: Scalar tensor or 0-D tensor
+            batch: LongTensor [N]
+
+        Returns:
+            Dict with energy and optionally forces/stress, matching ``M3GnetModel``.
+        """
         input_dict = {
             "atom_pos": atom_pos,
             "cell": cell,

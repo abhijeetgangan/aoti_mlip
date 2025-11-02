@@ -1,3 +1,5 @@
+"""Minimal message-passing utilities for M3GNet-style models."""
+
 import torch
 import torch.nn as nn
 
@@ -10,12 +12,14 @@ from aoti_mlip.models.mattersim_modules.layers import (
 
 
 def polynomial(r: torch.Tensor, cutoff: float) -> torch.Tensor:
-    """
-    Polynomial cutoff function
+    """Smooth polynomial cutoff in [0, cutoff].
+
     Args:
-        r (tf.Tensor): radius distance tensor
-        cutoff (float): cutoff distance
-    Returns: polynomial cutoff functions
+        r: Pair distances.
+        cutoff: Cutoff distance.
+
+    Returns:
+        Tensor of cutoff weights with same shape as ``r``.
     """
     ratio = torch.div(r, cutoff)
     result = 1 - 6 * torch.pow(ratio, 5) + 15 * torch.pow(ratio, 4) - 10 * torch.pow(ratio, 3)
@@ -23,6 +27,8 @@ def polynomial(r: torch.Tensor, cutoff: float) -> torch.Tensor:
 
 
 class ThreeDInteraction(nn.Module):
+    """Three-body interaction that aggregates triple-wise basis to edges."""
+
     def __init__(
         self,
         max_n,
@@ -54,6 +60,21 @@ class ThreeDInteraction(nn.Module):
         num_edges,
         num_triple_ij,
     ):
+        """Aggregate three-body basis per edge and update edge features.
+
+        Args:
+            edge_attr: Edge features.
+            three_basis: Triple-wise basis features.
+            atom_attr: Atom features.
+            edge_index: Edge index [2, E].
+            three_body_index: Triple index mapping.
+            edge_length: Edge lengths.
+            num_edges: Number of edges per graph (unused here but kept for API).
+            num_triple_ij: Number of triples per edge.
+
+        Returns:
+            Updated edge features tensor.
+        """
         atom_mask = (
             self.atom_mlp(atom_attr)[edge_index[0][three_body_index[:, 1]]]
             * polynomial(
@@ -113,6 +134,13 @@ class AtomLayer(nn.Module):
             out_dims=[128, 64, atom_attr_dim],
         )  # [2*atom_attr_dim+edge_attr_prime_dim]  ->  [atom_attr_dim]
         self.edge_layer = LinearLayer(in_dim=edge_attr_dim, out_dim=1)  # [atom_attr_dim]  ->  [1]
+        """Initialize atom update layer.
+
+        Args:
+            atom_attr_dim: Atom feature dimension.
+            edge_attr_dim: Edge feature dimension.
+            spherecal_dim: Spherical basis dimension.
+        """
 
     def forward(
         self,
@@ -122,6 +150,18 @@ class AtomLayer(nn.Module):
         edge_attr_prime,  # [sum(num_edges),edge_attr_dim]
         num_atoms,  # [batch_size]
     ):
+        """Update atom features by aggregating edge messages.
+
+        Args:
+            atom_attr: Atom features.
+            edge_attr: Original edge features.
+            edge_index: Edge index [2, E].
+            edge_attr_prime: Updated edge messages.
+            num_atoms: Number of atoms per graph (for batching).
+
+        Returns:
+            Updated atom features tensor.
+        """
         feat = torch.concat(
             [
                 atom_attr[edge_index[0]],
@@ -170,6 +210,13 @@ class EdgeLayer(nn.Module):
             out_dims=[128, 64, edge_attr_dim],
         )
         self.edge_layer = LinearLayer(in_dim=edge_attr_dim, out_dim=1)
+        """Initialize edge update layer.
+
+        Args:
+            atom_attr_dim: Atom feature dimension.
+            edge_attr_dim: Edge feature dimension.
+            spherecal_dim: Spherical basis dimension.
+        """
 
     def forward(
         self,
@@ -178,6 +225,17 @@ class EdgeLayer(nn.Module):
         edge_index,
         edge_attr_prime,  # [sum(num_edges),edge_attr_dim]
     ):
+        """Update edge features using atom features and messages.
+
+        Args:
+            atom_attr: Atom features.
+            edge_attr: Original edge features.
+            edge_index: Edge index [2, E].
+            edge_attr_prime: Updated edge messages.
+
+        Returns:
+            Updated edge features tensor.
+        """
         feat = torch.concat(
             [
                 atom_attr[edge_index[0]],
@@ -191,9 +249,7 @@ class EdgeLayer(nn.Module):
 
 
 class MainBlock(nn.Module):
-    """
-    MainBlock for Message Passing in M3GNet
-    """
+    """Main message-passing block (three-body + edge/atom updates)."""
 
     def __init__(
         self,
@@ -205,6 +261,7 @@ class MainBlock(nn.Module):
         threebody_cutoff,
     ):
         super().__init__()
+        """Initialize block hyperparameters and sublayers."""
         self.gated_mlp_atom = GatedMLP(
             in_dim=2 * units + units,
             out_dims=[units, units],
@@ -240,6 +297,23 @@ class MainBlock(nn.Module):
         num_triple_ij,
         num_atoms,
     ):
+        """Run a message-passing step updating edge and atom features.
+
+        Args:
+            atom_attr: Atom features.
+            edge_attr: Edge features.
+            edge_attr_zero: Base edge features used for gating.
+            edge_index: Edge index [2, E].
+            three_basis: Three-body basis features.
+            three_body_index: Triple index mapping.
+            edge_length: Edge lengths.
+            num_edges: Number of edges per graph.
+            num_triple_ij: Number of triples per edge.
+            num_atoms: Number of atoms per graph.
+
+        Returns:
+            Tuple of (updated_atom_attr, updated_edge_attr).
+        """
         # threebody interaction
         edge_attr = self.three_body(
             edge_attr,

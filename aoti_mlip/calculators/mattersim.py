@@ -1,3 +1,5 @@
+"""ASE Calculator wrapper around an AOTInductor-compiled MatterSim model."""
+
 import torch
 from ase.atoms import Atoms
 from ase.calculators.calculator import Calculator
@@ -8,8 +10,9 @@ from aoti_mlip.utils.batch_info import batch_to_tuples
 
 
 class MatterSimCalculator(Calculator):
-    """
-    Deep calculator based on ase Calculator
+    """ASE Calculator backed by an AOT-compiled MatterSim model.
+
+    Implements ``energy``, ``free_energy``, ``forces``, and ``stress``.
     """
 
     implemented_properties = ["energy", "free_energy", "forces", "stress"]
@@ -20,12 +23,12 @@ class MatterSimCalculator(Calculator):
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         **kwargs,
     ):
-        """
+        """Initialize the calculator.
+
         Args:
-            potential (Potential): m3gnet.models.Potential
-            compute_stress (bool): whether to calculate the stress
-            stress_weight (float): the stress weight.
-            **kwargs:
+            model_path: Filesystem path to the packaged ``.pt2`` model.
+            device: Device string to run inference on (e.g., ``"cpu"``, ``"cuda"``).
+            **kwargs: Additional ``ase.calculators.calculator.Calculator`` kwargs.
         """
         super().__init__(**kwargs)
         self.model_path = model_path
@@ -39,14 +42,17 @@ class MatterSimCalculator(Calculator):
         properties: list | None = None,
         system_changes: list | None = None,
     ):
-        """
+        """Run a calculation and populate ``self.results``.
+
         Args:
-            atoms (ase.Atoms): ase Atoms object
-            properties (list): list of properties to calculate
-            system_changes (list): monitor which properties of atoms were
-                changed for new calculation. If not, the previous calculation
-                results will be loaded.
+            atoms: The input ``ase.Atoms`` structure.
+            properties: Properties to compute; defaults to ``["energy"]``.
+            system_changes: List of changes that trigger recalculation; defaults
+                to standard ASE triggers.
+
         Returns:
+            None. Results are stored in ``self.results`` with keys:
+            ``energy``, ``free_energy``, ``forces``, and ``stress``.
         """
 
         all_changes = [

@@ -48,15 +48,16 @@ def compute_threebody_indices(
     atomic_number: np.ndarray,
     threebody_cutoff: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Given a graph without threebody indices, add the threebody indices
-    according to a threebody cutoff radius.
+    """Compute three-body indices and related counts under a cutoff.
 
     Args:
-        bond_atom_indices: np.ndarray, [n_atoms, 2]
-        bond_length: np.ndarray, [n_atoms]
-        n_atoms: int
-        atomic_number: np.ndarray, [n_atoms]
-        threebody_cutoff: float | None, threebody cutoff radius
+        bond_atom_indices: Array of shape [n_bonds, 2] (int), sender/receiver indices
+            for each bond (edge) in the graph.
+        bond_length: Array of shape [n_bonds] (float), length of each bond in Å.
+        n_atoms: Number of atoms in the graph.
+        atomic_number: Array of shape [n_atoms] (int), atomic numbers.
+        threebody_cutoff: If provided, only bonds with length <= cutoff
+            are considered for three-body (i, j, k) triplets.
 
     Returns:
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -104,14 +105,14 @@ def get_fixed_radius_bonding(
     cutoff: float = 5.0,
     numerical_tol: float = 1e-8,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Get graph representations from structure within cutoff.
+    """Get pairwise neighbors within a fixed cutoff under periodic boundary.
 
     Args:
-        positions: Atomic positions
-        pbc: PBC flags
-        cell: Lattice vectors
-        cutoff: Cutoff radius
-        numerical_tol: Numerical tolerance
+        positions: Array of shape [n_atoms, 3], atomic positions.
+        pbc: Array of shape [3] (bool or int), periodic boundary flags.
+        cell: Array of shape [3, 3], lattice vectors.
+        cutoff: Cutoff radius.
+        numerical_tol: Numerical tolerance to exclude self-edges.
 
     Returns:
         center_indices, neighbor_indices, images, distances
@@ -160,9 +161,9 @@ class GraphConverter:
         """Initialize the converter.
 
         Args:
-            twobody_cutoff: Cutoff radius for two-body interactions
-            has_threebody: Whether to include three-body interactions
-            threebody_cutoff: Cutoff radius for three-body interactions
+            twobody_cutoff: Two-body neighbor cutoff.
+            has_threebody: Whether to include three-body interactions.
+            threebody_cutoff: Three-body cutoff; only used if ``has_threebody``.
         """
         self.twobody_cutoff = twobody_cutoff
         self.threebody_cutoff = threebody_cutoff
@@ -175,16 +176,18 @@ class GraphConverter:
         cell: np.ndarray,
         pbc: np.ndarray,
     ) -> Data:
-        """Convert the structure into graph.
+        """Convert a structure into a graph suitable for MatterSim/M3GNet.
 
         Args:
-            positions: Atomic positions
-            atomic_numbers: Atomic numbers
-            cell: Lattice vectors
-            pbc: PBC flags
+            positions: Array [n_atoms, 3], atomic positions.
+            atomic_numbers: Array [n_atoms] (int), atomic numbers.
+            cell: Array [3, 3], lattice vectors.
+            pbc: Array [3] (bool or int), periodic boundary flags.
 
         Returns:
-            Graph representation of the structure
+            torch_geometric.data.Data containing node/edge features and indices
+            required by the model (e.g., ``atom_pos``, ``edge_index``,
+            ``pbc_offsets``, and optional three-body fields).
         """
         # normalize the structure
         pbc_ = np.array(pbc, dtype=int)

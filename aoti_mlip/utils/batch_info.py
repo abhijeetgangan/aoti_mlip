@@ -1,3 +1,10 @@
+"""Dynamic shape specs and small helpers for MatterSim example batches.
+
+This module defines dynamic shape constraints used during ``torch.export`` and
+provides utilities to construct a minimal example batch and convert it to the
+tuple form expected by the compiled model.
+"""
+
 import torch
 from ase.build import bulk
 
@@ -37,6 +44,14 @@ def get_example_inputs(
 
     Creates a silicon diamond structure, converts it to a graph via the dataloader,
     and returns the batch inputs with tensors moved to the specified device.
+
+    Args:
+        cutoff: Radial cutoff used to build neighbors.
+        threebody_cutoff: Cutoff for three-body neighborhood.
+        device: Target device; defaults to CUDA if available, else CPU.
+
+    Returns:
+        Tuple of tensors ordered to match ``mattersim_dynamic_shapes``.
     """
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -66,6 +81,30 @@ def get_example_inputs(
 
 
 def batch_to_tuples(batch_dict: dict[str, torch.Tensor]) -> tuple[torch.Tensor, ...]:
+    """Convert a dataloader batch dict to the tuple expected by the model.
+
+    The order matches ``mattersim_dynamic_shapes`` and the compiled model inputs.
+
+    Args:
+        batch_dict: Mapping produced by ``batch_to_dict`` containing the keys:
+            - ``"atom_pos"``: Tensor [num_atoms, 3]
+            - ``"cell"``: Tensor [1, 3, 3]
+            - ``"pbc_offsets"``: Tensor [num_edges, 3]
+            - ``"atom_attr"``: Tensor [num_atoms, 1]
+            - ``"edge_index"``: LongTensor [2, num_edges]
+            - ``"three_body_indices"``: LongTensor [num_three_body, 2]
+            - ``"num_three_body"``: Tensor [1]
+            - ``"num_bonds"``: Tensor [1]
+            - ``"num_triple_ij"``: Tensor [num_edges, 1]
+            - ``"num_atoms"``: Tensor [1]
+            - ``"num_graphs"``: Scalar tensor or 0-D tensor
+            - ``"batch"``: LongTensor [num_atoms]
+
+    Returns:
+        Tuple of tensors in the exact order required by the model:
+        (atom_pos, cell, pbc_offsets, atom_attr, edge_index, three_body_indices,
+        num_three_body, num_bonds, num_triple_ij, num_atoms, num_graphs, batch).
+    """
     return (
         batch_dict["atom_pos"],
         batch_dict["cell"],
