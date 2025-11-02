@@ -83,6 +83,10 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
+    - name: Create venv
+      run: |
+        uv venv
+
     - name: Install PyTorch ${{ matrix.pytorch-version }} (CPU)
       run: |
         uv pip install --upgrade pip wheel setuptools
