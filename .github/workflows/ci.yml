@@ -93,6 +93,7 @@ jobs:
     - name: Create venv
       run: |
         uv venv
+        source .venv/bin/activate
 
     - name: Install PyTorch ${{ matrix.pytorch-version }}
       run: |
