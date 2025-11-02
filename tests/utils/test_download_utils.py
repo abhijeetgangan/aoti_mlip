@@ -1,6 +1,5 @@
+from importlib import import_module
 from pathlib import Path
-
-from aoti_mlip.utils.download_utils import download_file
 
 
 class _DummyResp:
@@ -17,9 +16,10 @@ def test_download_file_writes_content(tmp_path, monkeypatch):
     def fake_get(url):  # noqa: ANN001
         return _DummyResp(expected)
 
-    monkeypatch.setattr("aoti_mlip.utils.download_utils.requests.get", fake_get)
+    monkeypatch.setattr("requests.get", fake_get)
+    dl_mod = import_module("aoti_mlip.utils.download_utils")
 
     out_path = Path(tmp_path) / "file.bin"
-    download_file("http://example.invalid/file", str(out_path))
+    dl_mod.download_file("http://example.invalid/file", str(out_path))  # type: ignore[attr-defined]
     assert out_path.exists()
     assert out_path.read_bytes() == expected
