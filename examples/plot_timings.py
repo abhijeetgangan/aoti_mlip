@@ -6,7 +6,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LogFormatter, LogLocator
 
-MODEL = "mattersim-v1.0.0-5M.pth"
+MODEL = "mattersim-v1.0.0-1M.pth"
 
 
 def load_timings(path: str) -> dict[str, Any]:
