@@ -51,13 +51,13 @@ def test_aot_output_match_casio3(casio3_atoms):
         load_path=checkpoint, device="cpu", compute_stress=True, compute_force=True
     )
 
-    energy_mattersim = atoms_2.get_potential_energy()
-    forces_mattersim = atoms_2.get_forces()
-    stress_mattersim = atoms_2.get_stress()
+    energy_ref = atoms_2.get_potential_energy()
+    forces_ref = atoms_2.get_forces()
+    stress_ref = atoms_2.get_stress()
 
-    assert np.allclose(energy, energy_mattersim, atol=1e-4)
-    assert np.allclose(forces, forces_mattersim, atol=1e-4)
-    assert np.allclose(stress, stress_mattersim, atol=1e-4)
+    assert np.allclose(energy, energy_ref, atol=1e-4)
+    assert np.allclose(forces, forces_ref, atol=1e-4)
+    assert np.allclose(stress, stress_ref, atol=1e-4)
 
 
 def test_aot_output_match_fe(fe_atoms):
@@ -86,10 +86,10 @@ def test_aot_output_match_fe(fe_atoms):
         load_path=checkpoint, device="cpu", compute_stress=True, compute_force=True
     )
 
-    energy_mattersim = atoms_2.get_potential_energy()
-    forces_mattersim = atoms_2.get_forces()
-    stress_mattersim = atoms_2.get_stress()
+    energy_ref = atoms_2.get_potential_energy()
+    forces_ref = atoms_2.get_forces()
+    stress_ref = atoms_2.get_stress()
 
-    assert np.allclose(energy, energy_mattersim, atol=1e-4)
-    assert np.allclose(forces, forces_mattersim, atol=1e-4)
-    assert np.allclose(stress, stress_mattersim, atol=1e-4)
+    assert np.allclose(energy, energy_ref, atol=1e-4)
+    assert np.allclose(forces, forces_ref, atol=1e-4)
+    assert np.allclose(stress, stress_ref, atol=1e-4)

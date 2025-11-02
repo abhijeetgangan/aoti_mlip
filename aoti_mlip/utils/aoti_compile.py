@@ -4,9 +4,14 @@ import os
 import torch
 
 from aoti_mlip.models.mattersim import M3GnetModel, M3GnetWrapper
-from aoti_mlip.utils.aoti_tools import model_make_fx, prepare_model_for_compile
+from aoti_mlip.utils.aoti_tools import (
+    model_make_fx,
+    prepare_model_for_compile,
+    test_model_output_similarity_by_dtype,
+)
 from aoti_mlip.utils.batch_info import MATTERSIM_DYNAMIC_SHAPES, get_example_inputs
 from aoti_mlip.utils.download_utils import download_mattersim_checkpoint
+from aoti_mlip.utils.torch_version import check_pt2_compile_compatibility
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +51,19 @@ def compile_mattersim(
         RuntimeError: If export or AOTInductor packaging fails.
         OSError: If a CUDA device is requested but unavailable.
     """
+    logger.info("Checking PyTorch version compatibility...")
+    check_pt2_compile_compatibility()
+
+    # defensively refresh the cache
+    torch._dynamo.reset()
+
     BASE_PATH = "~/.local/mattersim/pretrained_models/"
     CKPT_PATH = os.path.expanduser(f"{BASE_PATH}/{checkpoint_name}")
     if not os.path.exists(CKPT_PATH):
         download_mattersim_checkpoint(checkpoint_name)
+
     logger.info(f"Compiling mattersim model from {checkpoint_name}...")
+
     PACKAGE_PATH = os.path.expanduser(f"{BASE_PATH}/{checkpoint_name.replace('.pth', '.pt2')}")
     example_inputs = get_example_inputs(
         cutoff=cutoff, threebody_cutoff=threebody_cutoff, device=torch.device(device)
@@ -64,10 +77,14 @@ def compile_mattersim(
 
     wrapped_model = M3GnetWrapper(model_to_compile)
     model_to_compile = prepare_model_for_compile(wrapped_model, torch.device(device))
-    logger.info("Validating model outputs...")
+
+    logger.info("Validating default model outputs...")
+
     results = model_to_compile(*example_inputs)
-    logger.info(f"Keys for results: {results.keys()}")
+
+    logger.info(f"Keys for default model results: {results.keys()}")
     logger.info("Exporting model...")
+
     fx_model = model_make_fx(model_to_compile, example_inputs)
 
     exported_model = torch.export.export(
@@ -75,26 +92,32 @@ def compile_mattersim(
         example_inputs,
         dynamic_shapes=MATTERSIM_DYNAMIC_SHAPES,
     )
+
     _AOT_METADATA_KEY = "aot_inductor.metadata"
     INDUCTOR_CFG = {
         _AOT_METADATA_KEY: {"cutoff": str(cutoff), "threebody_cutoff": str(threebody_cutoff)},
     }
+
     torch._inductor.aoti_compile_and_package(
         exported_model,
         package_path=PACKAGE_PATH,
         inductor_configs=INDUCTOR_CFG,
     )
-    logger.info(f"Exported model saved to: {PACKAGE_PATH}")
 
-    logger.info("Validating loading for exported model...")
+    logger.info(f"Exported model saved to: {PACKAGE_PATH}")
+    logger.info("Validating model output similarity between AOT-compiled and default models...")
+
     aot_model = torch._inductor.aoti_load_package(PACKAGE_PATH)
+    test_model_output_similarity_by_dtype(aot_model, model_to_compile, example_inputs, tol=1e-4)
     aot_results = aot_model(*example_inputs)
-    logger.info(f"Keys for results: {aot_results.keys()}")
-    IF_ENERGY_CLOSE = torch.allclose(results["energy"], aot_results["energy"], atol=1e-4)
-    if not IF_ENERGY_CLOSE:
-        raise ValueError("Energy is not close between original and AOT-compiled model")
+
+    logger.info(f"Keys for AOT-compiled results: {aot_results.keys()}")
     logger.info("Printing metadata for model...")
+
     metadata = aot_model.get_metadata()
+
     logger.info(f"Metadata: {metadata}")
     logger.info("Model exported successfully")
+
+    torch.cuda.empty_cache()
     return PACKAGE_PATH

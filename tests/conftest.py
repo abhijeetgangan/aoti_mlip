@@ -6,12 +6,13 @@ from ase.spacegroup import crystal
 
 @pytest.fixture
 def fe_atoms() -> Atoms:
-    """Crystalline iron structure (ASE)."""
+    """Crystalline iron structure"""
     return bulk("Fe", "fcc", a=5.26, cubic=True)
 
 
 @pytest.fixture
 def casio3_atoms() -> Atoms:
+    """Crystalline casio3 structure"""
     a, b, c = 7.9258, 7.3202, 7.0653
     alpha, beta, gamma = 90.055, 95.217, 103.426
     basis = [

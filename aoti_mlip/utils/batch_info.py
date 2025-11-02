@@ -10,28 +10,28 @@ from ase.build import bulk
 
 from aoti_mlip.models.mattersim_modules.dataloader.build import batch_to_dict, build_dataloader
 
-node_dim = torch.export.dynamic_shapes.Dim("num_atoms", min=1, max=torch.inf)  # type: ignore
-pbc_offset_dim = torch.export.dynamic_shapes.Dim("num_edges", min=1, max=torch.inf)  # type: ignore
-three_body_dim = torch.export.dynamic_shapes.Dim("num_three_body", min=1, max=torch.inf)  # type: ignore
+NODE_DIM = torch.export.dynamic_shapes.Dim("num_atoms", min=1, max=torch.inf)  # type: ignore
+PBC_OFFSET_DIM = torch.export.dynamic_shapes.Dim("num_edges", min=1, max=torch.inf)  # type: ignore
+THREE_BODY_DIM = torch.export.dynamic_shapes.Dim("num_three_body", min=1, max=torch.inf)  # type: ignore
 
 # Dynamic shapes for each argument
 MATTERSIM_DYNAMIC_SHAPES = (
-    {0: node_dim, 1: torch.export.Dim.STATIC},  # atom_pos [num_atoms, 3]
+    {0: NODE_DIM, 1: torch.export.Dim.STATIC},  # atom_pos [num_atoms, 3]
     {
         0: torch.export.Dim.STATIC,
         1: torch.export.Dim.STATIC,
         2: torch.export.Dim.STATIC,
     },  # cell [1, 3, 3]
-    {0: pbc_offset_dim, 1: torch.export.Dim.STATIC},  # pbc_offsets [num_edges, 3]
-    {0: node_dim, 1: torch.export.Dim.STATIC},  # atom_attr [num_atoms, 1]
-    {0: torch.export.Dim.STATIC, 1: pbc_offset_dim},  # edge_index [2, num_edges]
-    {0: three_body_dim, 1: torch.export.Dim.STATIC},  # three_body_indices [num_three_body, 2]
+    {0: PBC_OFFSET_DIM, 1: torch.export.Dim.STATIC},  # pbc_offsets [num_edges, 3]
+    {0: NODE_DIM, 1: torch.export.Dim.STATIC},  # atom_attr [num_atoms, 1]
+    {0: torch.export.Dim.STATIC, 1: PBC_OFFSET_DIM},  # edge_index [2, num_edges]
+    {0: THREE_BODY_DIM, 1: torch.export.Dim.STATIC},  # three_body_indices [num_three_body, 2]
     {0: torch.export.Dim.STATIC},  # num_three_body [1]
     {0: torch.export.Dim.STATIC},  # num_bonds [1]
-    {0: pbc_offset_dim, 1: torch.export.Dim.STATIC},  # num_triple_ij [num_edges, 1]
+    {0: PBC_OFFSET_DIM, 1: torch.export.Dim.STATIC},  # num_triple_ij [num_edges, 1]
     {0: torch.export.Dim.STATIC},  # num_atoms [1]
     {},  # num_graphs (scalar)
-    {0: node_dim},  # batch [num_atoms]
+    {0: NODE_DIM},  # batch [num_atoms]
 )
 
 
