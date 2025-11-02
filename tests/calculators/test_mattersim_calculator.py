@@ -2,10 +2,15 @@ import os
 from pathlib import Path
 
 import pytest
-import torch
+from ase.build import bulk
 
+from aoti_mlip.calculators.mattersim import MatterSimCalculator as aoti_MatterSimCalculator
 from aoti_mlip.utils.aoti_compile import compile_mattersim
-from aoti_mlip.utils.batch_info import get_example_inputs
+
+try:
+    from mattersim.forcefield.potential import MatterSimCalculator
+except ImportError as err:
+    raise ImportError("Mattersim is not installed") from err
 
 
 def _ensure_checkpoint_available(checkpoint_name: str) -> str:
@@ -22,10 +27,6 @@ def _ensure_checkpoint_available(checkpoint_name: str) -> str:
 
 
 def test_aot_matches_ase_energy():
-    from ase.build import bulk
-
-    from aoti_mlip.calculators.mattersim import MatterSimCalculator
-
     checkpoint = "mattersim-v1.0.0-1M.pth"
     _ensure_checkpoint_available(checkpoint)
 
@@ -39,13 +40,11 @@ def test_aot_matches_ase_energy():
     )
     assert os.path.exists(pkg_path)
 
-    aot_model = torch._inductor.aoti_load_package(pkg_path)
-    example_inputs = get_example_inputs(device=torch.device("cpu"))
-    out = aot_model(*example_inputs)
-    energy_aot = float(out["energy"].detach().cpu().numpy()[0])
+    atoms_1 = bulk("Si", "diamond", a=5.43, cubic=True)
+    atoms_1.calc = aoti_MatterSimCalculator(model_path=pkg_path, device="cpu")
+    energy = float(atoms_1.get_potential_energy())
 
-    atoms = bulk("Si", "diamond", a=5.43, cubic=True)
-    atoms.calc = MatterSimCalculator(model_path=pkg_path, device="cpu")
-    energy_ase = float(atoms.get_potential_energy())
-
-    assert pytest.approx(energy_aot, rel=0, abs=1e-4) == energy_ase
+    atoms_2 = atoms_1.copy()
+    atoms_2.calc = MatterSimCalculator(device="cpu", compute_stress=True, compute_force=True)
+    energy_mattersim = float(atoms_2.get_potential_energy())
+    assert pytest.approx(energy, rel=0, abs=1e-4) == energy_mattersim

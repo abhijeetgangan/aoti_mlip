@@ -80,6 +80,7 @@ jobs:
       run: |
         uv pip install --system -e ".[dev,test]"
         uv pip install --system pytest pytest-cov
+        uv pip install --system mattersim
 
     - name: Test with pytest
       run: |
