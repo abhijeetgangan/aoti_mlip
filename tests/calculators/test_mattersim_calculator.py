@@ -47,7 +47,9 @@ def test_aot_output_match_casio3(casio3_atoms):
     stress = atoms_1.get_stress()
 
     atoms_2 = atoms_1.copy()
-    atoms_2.calc = MatterSimCalculator(device="cpu", compute_stress=True, compute_force=True)
+    atoms_2.calc = MatterSimCalculator(
+        load_path=checkpoint, device="cpu", compute_stress=True, compute_force=True
+    )
 
     energy_mattersim = atoms_2.get_potential_energy()
     forces_mattersim = atoms_2.get_forces()
@@ -80,7 +82,9 @@ def test_aot_output_match_fe(fe_atoms):
     stress = atoms_1.get_stress()
 
     atoms_2 = atoms_1.copy()
-    atoms_2.calc = MatterSimCalculator(device="cpu", compute_stress=True, compute_force=True)
+    atoms_2.calc = MatterSimCalculator(
+        load_path=checkpoint, device="cpu", compute_stress=True, compute_force=True
+    )
 
     energy_mattersim = atoms_2.get_potential_energy()
     forces_mattersim = atoms_2.get_forces()
