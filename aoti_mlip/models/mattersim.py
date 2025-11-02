@@ -28,9 +28,7 @@ class M3GnetModel(nn.Module):
         """Initialize the potential.
 
         Args:
-            model: State dict and configuration for the pretrained M3GNet model.
-                Expected keys include ``"model_args"`` (constructor kwargs) and
-                ``"model"`` (state dict).
+            model: torch.nn.Module instance of the pretrained M3GNet model.
             device: Device to run on, e.g. ``"cuda"``, ``"cuda:0"``, or ``"cpu"``.
             allow_tf32: Enable TF32 matmul on CUDA backends for speed at slight precision loss.
             compute_force: If True, compute forces via autograd during forward.
@@ -57,10 +55,7 @@ class M3GnetModel(nn.Module):
         """Forward pass.
 
         Args:
-            input_dict: Model inputs as a dictionary. Typical keys include
-                ``atom_pos`` [N, 3], ``cell`` [1, 3, 3], ``pbc_offsets`` [E, 3],
-                ``atom_attr`` [N, 1], ``edge_index`` [2, E], ``three_body_indices`` [T, 2],
-                and associated counters/indices used by the model.
+            input_dict: Model inputs as a dictionary.
             dataset_idx: Optional dataset selector for multi-head models; ``-1`` uses default.
 
         Returns:
@@ -152,12 +147,11 @@ class M3GnetModel(nn.Module):
 class M3GnetWrapper(torch.nn.Module):
     """Wrap the M3GNet model to accept flat tensor arguments instead of a dict."""
 
-    def __init__(self, m3gnet_model):
+    def __init__(self, m3gnet_model: M3GnetModel) -> None:
         """Initialize with an underlying M3GNet model instance.
 
         Args:
-            m3gnet_model: An instance of :class:`M3GnetModel` (or compatible) that
-                accepts an input dictionary and returns a results dictionary.
+            m3gnet_model: An instance of :class:`M3GnetModel`.
         """
         super().__init__()
         self.model = m3gnet_model
