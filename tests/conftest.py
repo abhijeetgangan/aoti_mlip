@@ -1,13 +1,16 @@
+import pytest
 from ase.atoms import Atoms
 from ase.build import bulk
 from ase.spacegroup import crystal
 
 
+@pytest.fixture
 def fe_atoms() -> Atoms:
-    """Create crystalline iron using ASE."""
+    """Crystalline iron structure (ASE)."""
     return bulk("Fe", "fcc", a=5.26, cubic=True)
 
 
+@pytest.fixture
 def casio3_atoms() -> Atoms:
     a, b, c = 7.9258, 7.3202, 7.0653
     alpha, beta, gamma = 90.055, 95.217, 103.426

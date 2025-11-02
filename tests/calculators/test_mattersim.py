@@ -5,7 +5,6 @@ import numpy as np
 
 from aoti_mlip.calculators.mattersim import MatterSimCalculator as aoti_MatterSimCalculator
 from aoti_mlip.utils.aoti_compile import compile_mattersim
-from tests.conftest import casio3_atoms, fe_atoms
 
 try:
     from mattersim.forcefield.potential import MatterSimCalculator  # type: ignore[attr-defined]
@@ -26,7 +25,7 @@ def _ensure_checkpoint_available(checkpoint_name: str) -> str:
     return str(target_path)
 
 
-def test_aot_output_match_casio3():
+def test_aot_output_match_casio3(casio3_atoms):
     checkpoint = "mattersim-v1.0.0-1M.pth"
     _ensure_checkpoint_available(checkpoint)
 
@@ -40,7 +39,7 @@ def test_aot_output_match_casio3():
     )
     assert os.path.exists(pkg_path)
 
-    atoms_1 = casio3_atoms()
+    atoms_1 = casio3_atoms.copy()
     atoms_1.calc = aoti_MatterSimCalculator(model_path=pkg_path, device="cpu")
 
     energy = atoms_1.get_potential_energy()
@@ -59,7 +58,7 @@ def test_aot_output_match_casio3():
     assert np.allclose(stress, stress_mattersim, atol=1e-4)
 
 
-def test_aot_output_match_fe():
+def test_aot_output_match_fe(fe_atoms):
     checkpoint = "mattersim-v1.0.0-5M.pth"
     _ensure_checkpoint_available(checkpoint)
 
@@ -73,7 +72,7 @@ def test_aot_output_match_fe():
     )
     assert os.path.exists(pkg_path)
 
-    atoms_1 = fe_atoms()
+    atoms_1 = fe_atoms.copy()
     atoms_1.calc = aoti_MatterSimCalculator(model_path=pkg_path, device="cpu")
 
     energy = atoms_1.get_potential_energy()
