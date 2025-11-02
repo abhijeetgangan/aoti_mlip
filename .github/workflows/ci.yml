@@ -91,16 +91,12 @@ jobs:
       run: |
         uv pip install --upgrade pip wheel setuptools
         uv pip install torch==${{ matrix.pytorch-version }}
-    - name: Install torch-geometric
-      run: |
-        uv pip install torch-geometric
 
     - name: Install project and runtime deps (without torch)
       run: |
-        uv pip install numpy ase pymatgen cython pytest pytest-cov
-        uv pip install -e . --no-deps
+        uv pip install -e ".[dev,test]"
 
-    - name: Install mattersim (reference implementation)
+    - name: Install mattersim
       run: |
         uv pip install mattersim
 

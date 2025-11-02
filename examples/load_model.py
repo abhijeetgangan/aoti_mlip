@@ -10,7 +10,7 @@ from aoti_mlip.utils.batch_info import (
 )
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-PACKAGE_PATH = compile_mattersim("mattersim-v1.0.0-5M.pth", device=DEVICE)
+PACKAGE_PATH = compile_mattersim("mattersim-v1.0.0-1M.pth", device=DEVICE)
 model = torch._inductor.aoti_load_package(PACKAGE_PATH)
 metadata = model.get_metadata()
 si_dc = bulk("Si", "diamond", a=5.43, cubic=True).repeat((2, 2, 2))
