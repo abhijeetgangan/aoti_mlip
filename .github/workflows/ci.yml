@@ -97,19 +97,15 @@ jobs:
 
     - name: Install PyTorch ${{ matrix.pytorch-version }}
       run: |
+        source .venv/bin/activate
         uv pip install --upgrade pip wheel setuptools
         uv pip install torch==${{ matrix.pytorch-version }}
 
-    - name: Install project and runtime deps (without torch)
-      run: |
-        uv pip install -e ".[dev,test]"
-
-    - name: Install mattersim
-      run: |
-        uv pip install mattersim
-
     - name: Test with pytest
       run: |
+        source .venv/bin/activate
+        uv pip install -e ".[dev,test]"
+        uv pip install mattersim
         pytest --cov=aoti_mlip --cov-report=xml tests/
 
     - name: Upload results to Codecov
