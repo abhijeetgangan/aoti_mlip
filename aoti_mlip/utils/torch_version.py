@@ -27,12 +27,6 @@ def get_version_safe(module_name: str) -> Optional[str]:
 _VERSION = get_version_safe(torch.__name__)
 assert _VERSION is not None, "PyTorch is not installed"
 _TORCH_VERSION = packaging.version.parse(_VERSION)
-_TORCH_GE_2_4 = packaging.version.parse(_TORCH_VERSION.base_version) >= packaging.version.parse(
-    "2.4"
-)
-_TORCH_GE_2_6 = packaging.version.parse(_TORCH_VERSION.base_version) >= packaging.version.parse(
-    "2.6"
-)
 _TORCH_GE_2_8 = packaging.version.parse(_TORCH_VERSION.base_version) >= packaging.version.parse(
     "2.8"
 )
@@ -42,6 +36,6 @@ _TORCH_GE_2_9 = packaging.version.parse(_TORCH_VERSION.base_version) >= packagin
 
 
 def check_pt2_compile_compatibility():
-    assert _TORCH_GE_2_6, (
-        f"PyTorch >= 2.6 required for PT2 compilation functionality, but {_TORCH_VERSION} found."
+    assert _TORCH_GE_2_8, (
+        f"PyTorch >= 2.8 required for PT2 compilation functionality, but {_TORCH_VERSION} found."
     )

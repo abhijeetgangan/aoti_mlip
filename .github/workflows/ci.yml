@@ -65,17 +65,9 @@ jobs:
     needs: [lint, type-check]
     strategy:
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
-        pytorch-version: ["2.6.0", "2.7.0", "2.8.0", "2.9.0"]
-        exclude:
-          - python-version: "3.14"
-            pytorch-version: "2.6.0"
-          - python-version: "3.14"
-            pytorch-version: "2.7.0"
-          - python-version: "3.14"
-            pytorch-version: "2.8.0"
+        python-version: ["3.12", "3.13"]
+        pytorch-version: ["2.8.0", "2.9.0"]
       fail-fast: false
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
 
     steps:
     - uses: actions/checkout@v4
@@ -101,11 +93,15 @@ jobs:
         uv pip install --upgrade pip wheel setuptools
         uv pip install torch==${{ matrix.pytorch-version }}
 
-    - name: Test with pytest
+    - name: Install dependencies
       run: |
         source .venv/bin/activate
         uv pip install -e ".[dev,test]"
         uv pip install mattersim
+
+    - name: Test with pytest
+      run: |
+        source .venv/bin/activate
         pytest --cov=aoti_mlip --cov-report=xml tests/
 
     - name: Upload results to Codecov

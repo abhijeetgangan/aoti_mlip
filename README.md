@@ -3,7 +3,8 @@
 [![CI](https://github.com/abhijeetgangan/aoti_mlip/actions/workflows/ci.yml/badge.svg)](https://github.com/abhijeetgangan/aoti_mlip/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/abhijeetgangan/aoti_mlip/branch/main/graph/badge.svg)](https://codecov.io/gh/abhijeetgangan/aoti_mlip)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12–3.13](https://img.shields.io/badge/python-3.12%E2%80%933.13-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch 2.8–2.9](https://img.shields.io/badge/pytorch-2.8%E2%80%932.9-EE4C2C.svg)](https://pytorch.org/)
 
 Simple demo of pytorch AOTInductor.
 
