@@ -47,7 +47,8 @@ model_to_compile = M3GnetEnergyModel(
     model=torch.load(CKPT_PATH, map_location=device, weights_only=True),
     device=str(device),
 )
-
+torch_energy = model_to_compile(*example_inputs)
+print("Torch energy:", torch_energy)
 # wrapped_model = M3GnetWrapper(model_to_compile)
 model_to_compile = prepare_model_for_compile(model_to_compile, torch.device(device))
 fx_model = model_make_fx(model_to_compile, example_inputs)
@@ -99,3 +100,7 @@ jit_time_without_jit = (jit_time_end - jit_time_start) / NCALLS
 print("Without JIT time:", time_without_jit, "s")
 print("JIT time:", jit_time_without_jit, "s")
 print("Speedup:", time_without_jit / jit_time_without_jit)
+
+assert torch.allclose(torch_energy, torch.tensor(energy, device=device), atol=1e-5), (
+    "Energy mismatch"
+)
