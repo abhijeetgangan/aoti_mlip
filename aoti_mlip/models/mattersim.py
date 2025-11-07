@@ -206,3 +206,85 @@ class M3GnetWrapper(torch.nn.Module):
         }
 
         return self.model(input_dict)
+
+
+class M3GnetEnergyModel(nn.Module):
+    """A wrapper class for the energy model."""
+
+    def __init__(
+        self,
+        model: nn.Module,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        allow_tf32: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize the energy model.
+
+        Args:
+            model: torch.nn.Module instance of the pretrained M3GNet model.
+            device: Device to run on, e.g. ``"cuda"``, ``"cuda:0"``, or ``"cpu"``.
+            allow_tf32: Enable TF32 matmul on CUDA backends for speed at slight precision loss.
+            **kwargs: Ignored; present for forward compatibility.
+        """
+        super().__init__()
+        torch.backends.cuda.matmul.allow_tf32 = allow_tf32
+
+        self.model = M3Gnet(device=device, **model["model_args"]).to(device)  # type: ignore
+        self.model.load_state_dict(model["model"], strict=False)  # type: ignore
+        self.model.eval()
+        self.device = device  # type: ignore
+        self.to(device)
+
+    def forward(
+        self,
+        atom_pos,
+        cell,
+        pbc_offsets,
+        atom_attr,
+        edge_index,
+        three_body_indices,
+        num_three_body,
+        num_bonds,
+        num_triple_ij,
+        num_atoms,
+        num_graphs,
+        batch,
+        dataset_idx: int = -1,
+    ) -> torch.Tensor:
+        """Forward pass.
+
+        Args:
+            input_dict: Model inputs as a dictionary:
+                - ``"atom_pos"``: Tensor [N, 3]
+                - ``"cell"``: Tensor [1, 3, 3]
+                - ``"pbc_offsets"``: Tensor [E, 3]
+                - ``"atom_attr"``: Tensor [N, 1]
+                - ``"edge_index"``: LongTensor [2, E]
+                - ``"three_body_indices"``: LongTensor [T, 2]
+                - ``"num_three_body"``: Tensor [1]
+                - ``"num_bonds"``: Tensor [1]
+                - ``"num_triple_ij"``: Tensor [E, 1]
+                - ``"num_atoms"``: Tensor [1]
+                - ``"num_graphs"``: Scalar tensor or 0-D tensor
+                - ``"batch"``: LongTensor [N]
+            dataset_idx: Optional dataset selector for multi-head models; ``-1`` uses default.
+
+        Returns:
+            Energy tensor [num_graphs]
+        """
+        input_dict = {
+            "atom_pos": atom_pos,
+            "cell": cell,
+            "pbc_offsets": pbc_offsets,
+            "atom_attr": atom_attr,
+            "edge_index": edge_index,
+            "three_body_indices": three_body_indices,
+            "num_three_body": num_three_body,
+            "num_bonds": num_bonds,
+            "num_triple_ij": num_triple_ij,
+            "num_atoms": num_atoms,
+            "num_graphs": num_graphs,
+            "batch": batch,
+        }
+        energies = self.model.forward(input_dict, dataset_idx)
+        return energies[0]
