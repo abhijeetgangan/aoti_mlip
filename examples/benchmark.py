@@ -19,6 +19,7 @@ OUT_JSON_AOTI = os.path.join(
 OUT_JSON_TORCH = os.path.join(
     SCRIPT_DIR, f"timings_cuda_torchscript_{MODEL_NAME.replace('.pth', '').replace('/', '_')}.json"
 )
+WARMUP_CALLS = 10
 PERIODIC = True
 N_CALLS = 100
 aoti_calculator = aoti_MatterSimCalculator(model_path=PACKAGE_PATH, device="cuda")
@@ -37,7 +38,6 @@ atoms_2.calc = calculator
 print(atoms_2.get_potential_energy())
 print(atoms_2.get_forces())
 print(atoms_2.get_stress())
-
 test_sizes = [1, 2, 3, 4, 5, 6]
 
 for N in test_sizes:
@@ -54,6 +54,14 @@ for N in test_sizes:
     atoms_2 = atoms_1.copy()
     atoms_2.calc = calculator
     start_time = time.perf_counter()
+    for _ in range(WARMUP_CALLS):
+        energy = atoms_2.get_potential_energy()
+        forces = atoms_2.get_forces()
+        stress = atoms_2.get_stress()
+    end_time = time.perf_counter()
+    warmup_time = (end_time - start_time) / WARMUP_CALLS
+    print(f"Warmup Time: {warmup_time * 1000:.2f} ms (avg of {WARMUP_CALLS} runs)")
+    start_time = time.perf_counter()
     for _ in range(N_CALLS):
         energy = atoms_2.get_potential_energy()
         forces = atoms_2.get_forces()
@@ -61,9 +69,9 @@ for N in test_sizes:
     end_time = time.perf_counter()
     original_time = (end_time - start_time) / N_CALLS
     print(f"Energy: {aoti_energy:.4f} eV")
-    print(f"Time: {aoti_time * 1000:.2f} ms (avg of {N_CALLS} runs)")
-    print(f"Time: {original_time * 1000:.2f} ms (avg of {N_CALLS} runs)")
-    print(f"Speedup: {original_time / aoti_time:.1f}x")
+    print(f"AOTI Time: {aoti_time * 1000:.2f} ms (avg of {N_CALLS} runs)")
+    print(f"Original Time: {original_time * 1000:.2f} ms (avg of {N_CALLS} runs)")
+    print(f"AOTI speedup: {original_time / aoti_time:.1f}x")
 
     # Verify correctness
     energy_match = np.allclose(aoti_energy, energy, atol=1e-4)
@@ -71,7 +79,34 @@ for N in test_sizes:
     stress_match = np.allclose(aoti_stress, stress, atol=1e-4)
     print(f"Correctness: Energy={energy_match}, Forces={forces_match}, Stress={stress_match}")
 
+from aoti_mlip.calculators.mattersim_jax import MatterSimJaxCalculator
 
+calculator_jax = MatterSimJaxCalculator(model_path=MODEL_PATH, device="cuda")
+atoms_3 = bulk("Fe", "bcc", a=2.86, cubic=True)
+atoms_3.calc = calculator_jax
+print(atoms_3.get_potential_energy())
+print(atoms_3.get_forces())
+print(atoms_3.get_stress())
+for N in test_sizes:
+    print(f"Testing {N}x{N}x{N} structure ({2 * N**3} atoms)")
+    atoms_3 = bulk("Fe", "bcc", a=2.86, cubic=True).repeat((N, N, N))
+    atoms_3.calc = calculator_jax
+    start_time = time.perf_counter()
+    for _ in range(WARMUP_CALLS):
+        jax_energy = atoms_3.get_potential_energy()
+        jax_forces = atoms_3.get_forces()
+        jax_stress = atoms_3.get_stress()
+    end_time = time.perf_counter()
+    jax_time = (end_time - start_time) / WARMUP_CALLS
+    print(f"Jax Time: {jax_time * 1000:.2f} ms (avg of {WARMUP_CALLS} runs)")
+    for _ in range(N_CALLS):
+        jax_energy = atoms_3.get_potential_energy()
+        jax_forces = atoms_3.get_forces()
+        jax_stress = atoms_3.get_stress()
+    end_time = time.perf_counter()
+    jax_time = (end_time - start_time) / N_CALLS
+    print(f"Jax Time: {jax_time * 1000:.2f} ms (avg of {N_CALLS} runs)")
+exit()
 aoti_timings = {}
 original_timings = {}
 N_multiples_aoti = (
