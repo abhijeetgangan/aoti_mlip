@@ -1,0 +1,363 @@
+"""Minimal message-passing utilities for M3GNet-style models."""
+
+import torch
+import torch.nn as nn
+
+from aoti_mlip.models.mattersim_modules.layers import (
+    GatedMLP,
+    LinearLayer,
+    SigmoidLayer,
+    SwishLayer,
+)
+
+
+def polynomial(r: torch.Tensor, cutoff: float) -> torch.Tensor:
+    """Smooth polynomial cutoff in [0, cutoff].
+
+    Args:
+        r: Pair distances.
+        cutoff: Cutoff distance.
+
+    Returns:
+        Tensor of cutoff weights with same shape as ``r``.
+    """
+    ratio = torch.div(r, cutoff)
+    result = 1 - 6 * torch.pow(ratio, 5) + 15 * torch.pow(ratio, 4) - 10 * torch.pow(ratio, 3)
+    return torch.clamp(result, min=0.0)
+
+
+class ThreeDInteraction(nn.Module):
+    """Three-body interaction that aggregates triple-wise basis to edges."""
+
+    def __init__(
+        self,
+        max_n,
+        max_l,
+        cutoff,
+        units,
+        spherecal_dim,
+        threebody_cutoff,
+    ):
+        super().__init__()
+        self.atom_mlp = SigmoidLayer(in_dim=units, out_dim=spherecal_dim)
+        self.edge_gate_mlp = GatedMLP(
+            in_dim=spherecal_dim,
+            out_dims=[units],
+            activation="swish",
+            use_bias=False,
+        )
+        self.cutoff = cutoff
+        self.threebody_cutoff = threebody_cutoff
+
+    def forward(
+        self,
+        edge_attr,
+        three_basis,
+        atom_attr,
+        edge_index,
+        three_body_index,
+        edge_length,
+        num_edges,
+        num_triple_ij,
+    ):
+        """Aggregate three-body basis per edge and update edge features.
+
+        Args:
+            edge_attr: Edge features.
+            three_basis: Triple-wise basis features.
+            atom_attr: Atom features.
+            edge_index: Edge index [2, E].
+            three_body_index: Triple index mapping.
+            edge_length: Edge lengths.
+            num_edges: Number of edges per graph (unused here but kept for API).
+            num_triple_ij: Number of triples per edge.
+
+        Returns:
+            Updated edge features tensor.
+        """
+        atom_mask = (
+            self.atom_mlp(atom_attr)[edge_index[0][three_body_index[:, 1]]]
+            * polynomial(
+                edge_length[three_body_index[:, 0]],
+                self.threebody_cutoff,
+            )
+            * polynomial(
+                edge_length[three_body_index[:, 1]],
+                self.threebody_cutoff,
+            )
+        )
+        three_basis = three_basis * atom_mask
+        num_edges_total = edge_attr.shape[0]
+        # Cound not guard
+        # index_map = torch.arange(torch.sum(num_edges).item())
+        # index_map = torch.repeat_interleave(index_map, num_triple_ij)
+
+        index_map = three_body_index[:, 0]
+
+        # e_ij_tuda = scatter(
+        #     three_basis,
+        #     index_map,
+        #     dim=0,
+        #     reduce="sum",
+        #     dim_size=torch.sum(num_edges).item(),
+        # )
+
+        output = torch.zeros(
+            (num_edges_total, three_basis.shape[1]),
+            device=three_basis.device,
+            dtype=three_basis.dtype,
+        )
+        # output.scatter_add_(
+        #     0, index_map.unsqueeze(-1).expand(-1, three_basis.shape[1]), three_basis
+        # )
+        # accumulate triple‐wise contributions per edge
+        output.index_add_(0, index_map, three_basis)
+        e_ij_tuda = output
+        edge_attr_prime = edge_attr + self.edge_gate_mlp(e_ij_tuda)
+        return edge_attr_prime
+
+
+class AtomLayer(nn.Module):
+    """
+    v_i'=v_i+sum(phi(v+i,v_j,e_ij',u)W*e_ij^0)
+    """
+
+    def __init__(
+        self,
+        atom_attr_dim,
+        edge_attr_dim,
+        spherecal_dim,
+    ):
+        super().__init__()
+        self.gated_mlp = GatedMLP(
+            in_dim=2 * atom_attr_dim + spherecal_dim,
+            out_dims=[128, 64, atom_attr_dim],
+        )  # [2*atom_attr_dim+edge_attr_prime_dim]  ->  [atom_attr_dim]
+        self.edge_layer = LinearLayer(in_dim=edge_attr_dim, out_dim=1)  # [atom_attr_dim]  ->  [1]
+        """Initialize atom update layer.
+
+        Args:
+            atom_attr_dim: Atom feature dimension.
+            edge_attr_dim: Edge feature dimension.
+            spherecal_dim: Spherical basis dimension.
+        """
+
+    def forward(
+        self,
+        atom_attr,
+        edge_attr,
+        edge_index,
+        edge_attr_prime,  # [sum(num_edges),edge_attr_dim]
+        num_atoms,  # [batch_size]
+    ):
+        """Update atom features by aggregating edge messages.
+
+        Args:
+            atom_attr: Atom features.
+            edge_attr: Original edge features.
+            edge_index: Edge index [2, E].
+            edge_attr_prime: Updated edge messages.
+            num_atoms: Number of atoms per graph (for batching).
+
+        Returns:
+            Updated atom features tensor.
+        """
+        feat = torch.concat(
+            [
+                atom_attr[edge_index[0]],
+                atom_attr[edge_index[1]],
+                edge_attr_prime,
+            ],
+            dim=1,
+        )
+        atom_attr_prime = self.gated_mlp(feat) * self.edge_layer(edge_attr)
+
+        # atom_attr_prime = scatter(
+        #     atom_attr_prime,
+        #     edge_index[1],
+        #     dim=0,
+        #     dim_size=torch.sum(num_atoms).item(),
+        # )
+
+        # total number of atoms is simply the first dimension of atom_attr
+        output = torch.zeros(
+            (atom_attr.shape[0], atom_attr_prime.shape[1]),
+            device=atom_attr_prime.device,
+            dtype=atom_attr_prime.dtype,
+        )
+        # output.scatter_add_(
+        #     0,
+        #     edge_index[1].unsqueeze(-1).expand(-1, atom_attr_prime.shape[1]),
+        #     atom_attr_prime,
+        # )
+        output.index_add_(0, edge_index[1], atom_attr_prime)
+        atom_attr_prime = output
+        return atom_attr_prime + atom_attr
+
+
+class EdgeLayer(nn.Module):
+    """e_ij'=e_ij+phi(v_i,v_j,e_ij,u)W*e_ij^0"""
+
+    def init(
+        self,
+        atom_attr_dim,
+        edge_attr_dim,
+        spherecal_dim,
+    ):
+        super().__init__()
+        self.gated_mlp = GatedMLP(
+            in_dim=2 * atom_attr_dim + spherecal_dim,
+            out_dims=[128, 64, edge_attr_dim],
+        )
+        self.edge_layer = LinearLayer(in_dim=edge_attr_dim, out_dim=1)
+        """Initialize edge update layer.
+
+        Args:
+            atom_attr_dim: Atom feature dimension.
+            edge_attr_dim: Edge feature dimension.
+            spherecal_dim: Spherical basis dimension.
+        """
+
+    def forward(
+        self,
+        atom_attr,
+        edge_attr,
+        edge_index,
+        edge_attr_prime,  # [sum(num_edges),edge_attr_dim]
+    ):
+        """Update edge features using atom features and messages.
+
+        Args:
+            atom_attr: Atom features.
+            edge_attr: Original edge features.
+            edge_index: Edge index [2, E].
+            edge_attr_prime: Updated edge messages.
+
+        Returns:
+            Updated edge features tensor.
+        """
+        feat = torch.concat(
+            [
+                atom_attr[edge_index[0]],
+                atom_attr[edge_index[1]],
+                edge_attr_prime,
+            ],
+            dim=1,
+        )
+        edge_attr_prime = self.gated_mlp(feat) * self.edge_layer(edge_attr)
+        return edge_attr_prime + edge_attr
+
+
+class MainBlock(nn.Module):
+    """Main message-passing block (three-body + edge/atom updates)."""
+
+    def __init__(
+        self,
+        max_n,
+        max_l,
+        cutoff,
+        units,
+        spherical_dim,
+        threebody_cutoff,
+    ):
+        super().__init__()
+        """Initialize block hyperparameters and sublayers."""
+        self.gated_mlp_atom = GatedMLP(
+            in_dim=2 * units + units,
+            out_dims=[units, units],
+            activation="swish",
+        )  # [2*atom_attr_dim+edge_attr_prime_dim]  ->  [units]
+        self.edge_layer_atom = SwishLayer(
+            in_dim=spherical_dim,
+            out_dim=units,
+            bias=False,
+        )  # [spherecal_dim]  ->  [units]
+        self.gated_mlp_edge = GatedMLP(
+            in_dim=2 * units + units,
+            out_dims=[units, units],
+            activation="swish",
+        )  # [2*atom_attr_dim+edge_attr_prime_dim]  ->  [units]
+        self.edge_layer_edge = LinearLayer(
+            in_dim=spherical_dim, out_dim=units, bias=False
+        )  # [spherecal_dim]  ->  [units]
+        self.three_body = ThreeDInteraction(
+            max_n, max_l, cutoff, units, max_n * max_l, threebody_cutoff
+        )
+
+    def forward(
+        self,
+        atom_attr,
+        edge_attr,
+        edge_attr_zero,
+        edge_index,
+        three_basis,
+        three_body_index,
+        edge_length,
+        num_edges,
+        num_triple_ij,
+        num_atoms,
+    ):
+        """Run a message-passing step updating edge and atom features.
+
+        Args:
+            atom_attr: Atom features.
+            edge_attr: Edge features.
+            edge_attr_zero: Base edge features used for gating.
+            edge_index: Edge index [2, E].
+            three_basis: Three-body basis features.
+            three_body_index: Triple index mapping.
+            edge_length: Edge lengths.
+            num_edges: Number of edges per graph.
+            num_triple_ij: Number of triples per edge.
+            num_atoms: Number of atoms per graph.
+
+        Returns:
+            Tuple of (updated_atom_attr, updated_edge_attr).
+        """
+        # threebody interaction
+        edge_attr = self.three_body(
+            edge_attr,
+            three_basis,
+            atom_attr,
+            edge_index,
+            three_body_index,
+            edge_length,
+            num_edges,
+            num_triple_ij.view(-1),
+        )
+
+        # update bond feature
+        feat = torch.concat(
+            [atom_attr[edge_index[0]], atom_attr[edge_index[1]], edge_attr],
+            dim=1,
+        )
+        edge_attr = edge_attr + self.gated_mlp_edge(feat) * self.edge_layer_edge(edge_attr_zero)
+
+        # update atom feature
+        feat = torch.concat(
+            [atom_attr[edge_index[0]], atom_attr[edge_index[1]], edge_attr],
+            dim=1,
+        )
+        atom_attr_prime = self.gated_mlp_atom(feat) * self.edge_layer_atom(edge_attr_zero)
+        # Using torch_runstats.scatter:
+        # atom_attr = atom_attr + scatter(
+        #     atom_attr_prime,
+        #     edge_index[0],
+        #     dim=0,
+        #     dim_size=torch.sum(num_atoms).item(),
+        # )
+
+        output = torch.zeros(
+            (atom_attr.shape[0], atom_attr_prime.shape[1]),
+            device=atom_attr_prime.device,
+            dtype=atom_attr_prime.dtype,
+        )
+        # output.scatter_add_(
+        #    0,
+        #    edge_index[0].unsqueeze(-1).expand(-1, atom_attr_prime.shape[1]),
+        #    atom_attr_prime,
+        # )
+        output.index_add_(0, edge_index[0], atom_attr_prime)
+        atom_attr = atom_attr + output
+
+        return atom_attr, edge_attr

@@ -1,0 +1,81 @@
+[project]
+name = "aoti_mlip"
+version = "0.0.1"
+description = "Demo of pytorch AOTInductor for compilation of MLIPs"
+authors = [
+    { name = "Abhijeet Gangan", email = "abhijeetgangan@g.ucla.edu" },
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.8",
+    "torch_geometric",
+    "numpy",
+    "ase",
+    "pymatgen",
+    "cython",
+]
+
+[build-system]
+requires = ["setuptools>=74.0", "wheel", "numpy>=2.0", "cython>=3.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "ruff",
+    "ty"
+]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.setuptools.packages.find]
+include = ["aoti_mlip*"]
+exclude = ["example*"]
+
+[tool.setuptools]
+license-files = [
+    "LICENSE",
+    "third_party/mattersim/LICENSE",
+    "third_party/nequip/LICENSE",
+]
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".git",
+    ".env",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    "build",
+    "dist",
+    "example",
+]
+
+# Allow lines to be as long as 100 characters.
+line-length = 100
+
+# Target Python 3.12+
+target-version = "py312"
+
+# Linting configuration
+[tool.ruff.lint]
+select = ["E", "F", "B", "I"]
+fixable = ["ALL"]
+
+# Sort imports.
+[tool.ruff.lint.isort]
+known-first-party = ["aoti_mlip"]
+
+[tool.ty]
+src = { include = ["aoti_mlip", "tests", "example"] }
