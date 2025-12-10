@@ -66,6 +66,23 @@ forces = atoms.get_forces()
 stress = atoms.get_stress()
 ```
 
+## Performance
+
+Benchmarks were performed on NVIDIA A100 40GB GPU.
+
+<table>
+<tr>
+<td width="50%">
+<img src="examples/assets/timings_a100_40gb_mattersim-v1.0.0-1M.png" alt="Timing Comparison - 1M Model">
+</td>
+<td width="50%">
+<img src="examples/assets/timings_a100_40gb_mattersim-v1.0.0-5M.png" alt="Timing Comparison - 5M Model">
+</td>
+</tr>
+</table>
+
+Run `examples/benchmark.py` to generate your own performance plots.
+
 ## License and third‑party notices
 
 - Project license: MIT [LICENSE](LICENSE)
