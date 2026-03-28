@@ -81,4 +81,5 @@ known-first-party = ["aoti_mlip"]
 src = { include = ["aoti_mlip", "tests", "example"] }
 
 [tool.ty.rules]
+unresolved-import = "warn"
 unused-ignore-comment = "ignore"
