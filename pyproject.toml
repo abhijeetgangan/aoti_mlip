@@ -35,6 +35,7 @@ dev = [
 test = [
     "pytest",
     "pytest-cov",
+    "torch-sim-atomistic",
 ]
 
 [tool.setuptools.packages.find]
@@ -82,4 +83,5 @@ src = { include = ["aoti_mlip", "tests", "example"] }
 
 [tool.ty.rules]
 unresolved-import = "warn"
+call-non-callable = "warn"
 unused-ignore-comment = "ignore"
