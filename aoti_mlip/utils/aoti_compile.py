@@ -66,7 +66,10 @@ def compile_mattersim(
 
     PACKAGE_PATH = os.path.expanduser(f"{BASE_PATH}/{checkpoint_name.replace('.pth', '.pt2')}")
     example_inputs = get_example_inputs(
-        cutoff=cutoff, threebody_cutoff=threebody_cutoff, device=torch.device(device)
+        cutoff=cutoff,
+        threebody_cutoff=threebody_cutoff,
+        device=torch.device(device),
+        num_structures=2,
     )
     model_to_compile = M3GnetModel(
         model=torch.load(CKPT_PATH, map_location=device, weights_only=True),
@@ -107,6 +110,16 @@ def compile_mattersim(
 
     aot_model = torch._inductor.aoti_load_package(PACKAGE_PATH)
     test_model_output_similarity_by_dtype(aot_model, model_to_compile, example_inputs, tol=1e-4)
+
+    logger.info("Validating dynamic batch dimension with a different batch size...")
+    single_inputs = get_example_inputs(
+        cutoff=cutoff,
+        threebody_cutoff=threebody_cutoff,
+        device=torch.device(device),
+        num_structures=1,
+    )
+    test_model_output_similarity_by_dtype(aot_model, model_to_compile, single_inputs, tol=1e-4)
+
     aot_results = aot_model(*example_inputs)
 
     logger.info(f"Keys for AOT-compiled results: {aot_results.keys()}")

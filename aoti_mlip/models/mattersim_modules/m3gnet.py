@@ -195,7 +195,11 @@ class M3Gnet(nn.Module):
         # energies = scatter(energies_i, batch, dim=0, dim_size=num_graphs)
 
         # NOTE: This is with torch.scatter_add_
-        output = torch.zeros(num_graphs, device=energies_i.device, dtype=energies_i.dtype)  # type: ignore
+        # Derive num_graphs from a tensor dimension tracked by torch.export
+        # rather than the scalar ``num_graphs`` argument, which would be
+        # specialized (constant-folded) during export.
+        n_graphs = num_atoms.shape[0]
+        output = torch.zeros(n_graphs, device=energies_i.device, dtype=energies_i.dtype)
         energies = output.scatter_add_(0, batch, energies_i)
 
         return energies  # [batch_size]
