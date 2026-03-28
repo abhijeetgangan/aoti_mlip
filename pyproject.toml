@@ -79,3 +79,6 @@ known-first-party = ["aoti_mlip"]
 
 [tool.ty]
 src = { include = ["aoti_mlip", "tests", "example"] }
+
+[tool.ty.rules]
+unused-ignore-comment = "ignore"
