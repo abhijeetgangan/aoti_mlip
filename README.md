@@ -66,9 +66,44 @@ forces = atoms.get_forces()
 stress = atoms.get_stress()
 ```
 
+### 3. Batched simulation with TorchSim
+
+Use the compiled model with [TorchSim](https://github.com/TorchSim/torch-sim) for
+batched MD and structural relaxation:
+
+```python
+import torch
+import torch_sim as ts
+from ase.build import bulk
+
+from aoti_mlip.calculators.torchsim import MatterSimTorchSimModel
+
+# Load the compiled model as a TorchSim ModelInterface
+model = MatterSimTorchSimModel(
+    model_path="~/.local/mattersim/pretrained_models/mattersim-v1.0.0-1M.pt2",
+    device="cuda",
+)
+
+# Batch-relax multiple structures simultaneously
+structures = [
+    bulk("Si", "diamond", a=5.43, cubic=True),
+    bulk("Cu", "fcc", a=3.61, cubic=True),
+    bulk("Fe", "bcc", a=2.86, cubic=True),
+]
+relaxed = ts.optimize(
+    system=structures,
+    model=model,
+    optimizer=ts.Optimizer.fire,
+    convergence_fn=ts.generate_force_convergence_fn(force_tol=1e-3),
+    init_kwargs={"cell_filter": ts.CellFilter.frechet},
+)
+```
+
 ## Performance
 
-Benchmarks were performed on NVIDIA A100 40GB GPU.
+### Single-structure throughput
+
+Benchmarks on NVIDIA A100 40GB GPU:
 
 <table>
 <tr>
@@ -82,6 +117,14 @@ Benchmarks were performed on NVIDIA A100 40GB GPU.
 </table>
 
 Run `examples/benchmark.py` to generate your own performance plots.
+
+### Batch relaxation
+
+Relaxation of 1000 WBM structures with FIRE + Frechet cell filter on RTX 4070M:
+
+<img src="examples/assets/timing_rtx4070m_batch_relaxation_mattersim-v1.0.0-1M.png" alt="Batch Relaxation Parity" width="80%">
+
+Run `examples/batch_relaxation.py` to reproduce.
 
 ## License and third‑party notices
 
