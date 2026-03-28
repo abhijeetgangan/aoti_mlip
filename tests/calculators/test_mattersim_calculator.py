@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+import pytest
 import torch
 
 from aoti_mlip.calculators.mattersim import MatterSimCalculator as aoti_MatterSimCalculator
@@ -9,11 +10,15 @@ from aoti_mlip.models.mattersim_modules.dataloader.build import build_dataloader
 from aoti_mlip.utils.aoti_compile import compile_mattersim
 
 try:
-    from mattersim.forcefield.potential import (
-        MatterSimCalculator,  # ty: ignore[unresolved-import]
+    from mattersim.forcefield.potential import (  # ty: ignore[unresolved-import]
+        MatterSimCalculator,
     )
-except ImportError as err:
-    raise ImportError("Mattersim is not installed") from err
+except ImportError:
+    MatterSimCalculator = None  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
+
+requires_mattersim = pytest.mark.skipif(
+    MatterSimCalculator is None, reason="mattersim not installed or incompatible"
+)
 
 
 def _ensure_checkpoint_available(checkpoint_name: str) -> str:
@@ -29,6 +34,7 @@ def _ensure_checkpoint_available(checkpoint_name: str) -> str:
     return str(target_path)
 
 
+@requires_mattersim
 def test_aot_output_match_casio3(casio3_atoms):
     checkpoint = "mattersim-v1.0.0-1M.pth"
     _ensure_checkpoint_available(checkpoint)
@@ -64,6 +70,7 @@ def test_aot_output_match_casio3(casio3_atoms):
     assert np.allclose(stress, stress_ref, atol=1e-4)
 
 
+@requires_mattersim
 def test_aot_output_match_fe(fe_atoms):
     checkpoint = "mattersim-v1.0.0-5M.pth"
     _ensure_checkpoint_available(checkpoint)
