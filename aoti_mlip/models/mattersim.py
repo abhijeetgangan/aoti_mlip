@@ -18,7 +18,7 @@ class M3GnetEnergyModel(nn.Module):
 
     def __init__(
         self,
-        model: nn.Module,
+        model: dict[str, Any],
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         allow_tf32: bool = False,
         **kwargs: Any,
@@ -36,10 +36,10 @@ class M3GnetEnergyModel(nn.Module):
         super().__init__()
         torch.backends.cuda.matmul.allow_tf32 = allow_tf32
 
-        self.model = M3Gnet(device=device, **model["model_args"]).to(device)  # type: ignore
-        self.model.load_state_dict(model["model"], strict=False)  # type: ignore
+        self.model = M3Gnet(device=torch.device(device), **model["model_args"]).to(device)
+        self.model.load_state_dict(model["model"], strict=False)
         self.model.eval()
-        self.device = device  # type: ignore
+        self.device = device  # type: ignore[assignment]
         self.to(device)
 
     def forward(
@@ -62,15 +62,15 @@ class M3GnetEnergyModel(nn.Module):
 
         Args:
             atom_pos: Tensor [N, 3] - atomic positions
-            cell: Tensor [1, 3, 3] - cell vectors
+            cell: Tensor [num_graphs, 3, 3] - cell vectors
             pbc_offsets: Tensor [E, 3] - periodic boundary condition offsets
             atom_attr: Tensor [N, 1] - atomic attributes
             edge_index: LongTensor [2, E] - edge connectivity
             three_body_indices: LongTensor [T, 2] - three-body interaction indices
-            num_three_body: Tensor [1] - number of three-body interactions
-            num_bonds: Tensor [1] - number of bonds
+            num_three_body: Tensor [num_graphs] - number of three-body interactions per graph
+            num_bonds: Tensor [num_graphs] - number of bonds per graph
             num_triple_ij: Tensor [E, 1] - number of triplets per edge
-            num_atoms: Tensor [1] - number of atoms
+            num_atoms: Tensor [num_graphs] - number of atoms per graph
             num_graphs: Scalar tensor - number of graphs in batch
             batch: LongTensor [N] - batch assignment for each atom
             dataset_idx: Optional dataset selector for multi-head models; ``-1`` uses default.
@@ -101,7 +101,7 @@ class M3GnetModel(nn.Module):
 
     def __init__(
         self,
-        model: nn.Module,
+        model: dict[str, Any],
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         allow_tf32: bool = False,
         compute_force: bool = False,
@@ -123,13 +123,13 @@ class M3GnetModel(nn.Module):
         super().__init__()
         torch.backends.cuda.matmul.allow_tf32 = allow_tf32
 
-        self.compute_force = compute_force  # type: ignore
-        self.compute_stress = compute_stress  # type: ignore
+        self.compute_force = compute_force
+        self.compute_stress = compute_stress
 
-        self.model = M3Gnet(device=device, **model["model_args"]).to(device)  # type: ignore
-        self.model.load_state_dict(model["model"], strict=False)  # type: ignore
+        self.model = M3Gnet(device=torch.device(device), **model["model_args"]).to(device)
+        self.model.load_state_dict(model["model"], strict=False)
         self.model.eval()
-        self.device = device  # type: ignore
+        self.device = device  # type: ignore[assignment]
         self.to(device)
 
     def forward(
@@ -152,15 +152,15 @@ class M3GnetModel(nn.Module):
 
         Args:
             atom_pos: Tensor [N, 3] - atomic positions
-            cell: Tensor [1, 3, 3] - cell vectors
+            cell: Tensor [num_graphs, 3, 3] - cell vectors
             pbc_offsets: Tensor [E, 3] - periodic boundary condition offsets
             atom_attr: Tensor [N, 1] - atomic attributes
             edge_index: LongTensor [2, E] - edge connectivity
             three_body_indices: LongTensor [T, 2] - three-body interaction indices
-            num_three_body: Tensor [1] - number of three-body interactions
-            num_bonds: Tensor [1] - number of bonds
+            num_three_body: Tensor [num_graphs] - number of three-body interactions per graph
+            num_bonds: Tensor [num_graphs] - number of bonds per graph
             num_triple_ij: Tensor [E, 1] - number of triplets per edge
-            num_atoms: Tensor [1] - number of atoms
+            num_atoms: Tensor [num_graphs] - number of atoms per graph
             num_graphs: Scalar tensor - number of graphs in batch
             batch: LongTensor [N] - batch assignment for each atom
             dataset_idx: Optional dataset selector for multi-head models; ``-1`` uses default.
@@ -211,7 +211,7 @@ class M3GnetModel(nn.Module):
 
         # Only take first derivative if only force is required
         if self.compute_force and not self.compute_stress:
-            grad_outputs: list[torch.Tensor | None] = [
+            grad_outputs: list[torch.Tensor] = [
                 torch.ones_like(
                     energies,
                 )
@@ -221,18 +221,17 @@ class M3GnetModel(nn.Module):
                     energies,
                 ],
                 inputs=[atom_pos],
-                grad_outputs=grad_outputs,  # type: ignore
+                grad_outputs=grad_outputs,
                 create_graph=self.model.training,
             )
 
-            # Dump out gradient for forces
             force_grad = grad[0]
             if force_grad is not None:
                 forces = torch.neg(force_grad)
                 results["forces"] = forces.detach()
 
         if self.compute_force and self.compute_stress:
-            grad_outputs: list[torch.Tensor | None] = [
+            grad_outputs: list[torch.Tensor] = [
                 torch.ones_like(
                     energies,
                 )
@@ -242,11 +241,10 @@ class M3GnetModel(nn.Module):
                     energies,
                 ],
                 inputs=[atom_pos, strain],
-                grad_outputs=grad_outputs,  # type: ignore
+                grad_outputs=grad_outputs,
                 create_graph=self.model.training,
             )
 
-            # Dump out gradient for forces and stresses
             force_grad = grad[0]
             stress_grad = grad[1]
 

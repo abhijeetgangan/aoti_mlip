@@ -3,7 +3,7 @@
 import torch
 from ase.atoms import Atoms
 from ase.calculators.calculator import Calculator
-from ase.constraints import full_3x3_to_voigt_6_stress
+from ase.constraints import full_3x3_to_voigt_6_stress  # type: ignore[unresolved-import]
 
 from aoti_mlip.models.mattersim_modules.dataloader.build import build_dataloader, unpack_graph_batch
 

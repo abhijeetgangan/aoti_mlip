@@ -53,8 +53,8 @@ class AtomScaling(nn.Module):
         """
         super().__init__()
 
-        self.max_z = max_z  # type: ignore
-        self.device = device  # type: ignore
+        self.max_z = max_z
+        self.device = device
 
         # === initial values are given ===
         if init_scale is None:
