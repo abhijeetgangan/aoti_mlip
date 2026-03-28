@@ -120,9 +120,9 @@ Run `examples/benchmark.py` to generate your own performance plots.
 
 ### Batch relaxation
 
-Relaxation of 1000 WBM structures with FIRE + Frechet cell filter on RTX 4070M:
+Relaxation of 1000 WBM structures with TorchSim on RTX 4070M:
 
-<img src="examples/assets/timing_rtx4070m_batch_relaxation_mattersim-v1.0.0-1M.png" alt="Batch Relaxation Parity" width="80%">
+<img src="examples/assets/timing_rtx4070m_batch_relaxation_mattersim-v1.0.0-1M.png" alt="Batch Relaxation Parity">
 
 Run `examples/batch_relaxation.py` to reproduce.
 
