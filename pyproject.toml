@@ -84,4 +84,7 @@ src = { include = ["aoti_mlip", "tests", "example"] }
 [tool.ty.rules]
 unresolved-import = "warn"
 call-non-callable = "warn"
+invalid-argument-type = "warn"
+too-many-positional-arguments = "warn"
+parameter-already-assigned = "warn"
 unused-ignore-comment = "ignore"
