@@ -39,7 +39,7 @@ class M3GnetEnergyModel(nn.Module):
         self.model = M3Gnet(device=torch.device(device), **model["model_args"]).to(device)
         self.model.load_state_dict(model["model"], strict=False)
         self.model.eval()
-        self.device = device  # type: ignore[assignment]
+        self.device = device
         self.to(device)
 
     def forward(
@@ -129,7 +129,7 @@ class M3GnetModel(nn.Module):
         self.model = M3Gnet(device=torch.device(device), **model["model_args"]).to(device)
         self.model.load_state_dict(model["model"], strict=False)
         self.model.eval()
-        self.device = device  # type: ignore[assignment]
+        self.device = device
         self.to(device)
 
     def forward(

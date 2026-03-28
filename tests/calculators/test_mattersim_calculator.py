@@ -10,7 +10,7 @@ from aoti_mlip.utils.aoti_compile import compile_mattersim
 
 try:
     from mattersim.forcefield.potential import (
-        MatterSimCalculator,  # type: ignore[unresolved-import]
+        MatterSimCalculator,
     )
 except ImportError as err:
     raise ImportError("Mattersim is not installed") from err

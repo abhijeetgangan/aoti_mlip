@@ -29,8 +29,8 @@ python_functions = "test_*"
 [project.optional-dependencies]
 dev = [
     "pre-commit",
-    "ruff",
-    "ty"
+    "ruff>=0.15,<0.16",
+    "ty>=0.0.26,<0.1",
 ]
 test = [
     "pytest",

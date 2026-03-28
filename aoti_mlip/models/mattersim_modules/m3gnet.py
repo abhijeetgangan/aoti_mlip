@@ -120,15 +120,15 @@ class M3Gnet(nn.Module):
 
         Args:
             atom_pos: Tensor [N, 3] - atomic positions
-            cell: Tensor [1, 3, 3] - unit cell vectors
+            cell: Tensor [num_graphs, 3, 3] - unit cell vectors
             pbc_offsets: Tensor [E, 3] - periodic boundary condition offsets
             atom_attr: Tensor [N, 1] - atomic attributes (atomic numbers)
             edge_index: LongTensor [2, E] - edge connectivity
             three_body_indices: LongTensor [T, 2] - three-body interaction indices
-            num_three_body: Tensor [1] - number of three-body terms per graph
-            num_bonds: Tensor [1] - number of bonds per graph
+            num_three_body: Tensor [num_graphs] - number of three-body terms per graph
+            num_bonds: Tensor [num_graphs] - number of bonds per graph
             num_triple_ij: Tensor [E, 1] - number of triple interactions per edge
-            num_atoms: Tensor [1] - number of atoms per graph
+            num_atoms: Tensor [num_graphs] - number of atoms per graph
             num_graphs: Scalar tensor - total number of graphs in batch
             batch: LongTensor [N] - graph assignment for each atom
             dataset_idx: Index of dataset being used. Default: -1
