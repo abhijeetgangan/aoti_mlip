@@ -29,12 +29,13 @@ python_functions = "test_*"
 [project.optional-dependencies]
 dev = [
     "pre-commit",
-    "ruff",
-    "ty"
+    "ruff>=0.15,<0.16",
+    "ty>=0.0.26,<0.1",
 ]
 test = [
     "pytest",
     "pytest-cov",
+    "torch-sim-atomistic",
 ]
 
 [tool.setuptools.packages.find]
@@ -79,3 +80,11 @@ known-first-party = ["aoti_mlip"]
 
 [tool.ty]
 src = { include = ["aoti_mlip", "tests", "example"] }
+
+[tool.ty.rules]
+unresolved-import = "warn"
+call-non-callable = "warn"
+invalid-argument-type = "warn"
+too-many-positional-arguments = "warn"
+parameter-already-assigned = "warn"
+unused-ignore-comment = "ignore"

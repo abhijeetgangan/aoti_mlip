@@ -87,9 +87,9 @@ class M3Gnet(nn.Module):
         )
         self.atom_embedding.apply(self.init_weights_uniform)
         self.normalizer = AtomScaling(verbose=False, max_z=max_z)
-        self.max_z = max_z  # type: ignore
-        self.device = device  # type: ignore
-        self.model_args = {  # type: ignore
+        self.max_z = max_z
+        self.device = device
+        self.model_args = {
             "num_blocks": num_blocks,
             "units": units,
             "max_l": max_l,
@@ -120,15 +120,15 @@ class M3Gnet(nn.Module):
 
         Args:
             atom_pos: Tensor [N, 3] - atomic positions
-            cell: Tensor [1, 3, 3] - unit cell vectors
+            cell: Tensor [num_graphs, 3, 3] - unit cell vectors
             pbc_offsets: Tensor [E, 3] - periodic boundary condition offsets
             atom_attr: Tensor [N, 1] - atomic attributes (atomic numbers)
             edge_index: LongTensor [2, E] - edge connectivity
             three_body_indices: LongTensor [T, 2] - three-body interaction indices
-            num_three_body: Tensor [1] - number of three-body terms per graph
-            num_bonds: Tensor [1] - number of bonds per graph
+            num_three_body: Tensor [num_graphs] - number of three-body terms per graph
+            num_bonds: Tensor [num_graphs] - number of bonds per graph
             num_triple_ij: Tensor [E, 1] - number of triple interactions per edge
-            num_atoms: Tensor [1] - number of atoms per graph
+            num_atoms: Tensor [num_graphs] - number of atoms per graph
             num_graphs: Scalar tensor - total number of graphs in batch
             batch: LongTensor [N] - graph assignment for each atom
             dataset_idx: Index of dataset being used. Default: -1
@@ -195,7 +195,11 @@ class M3Gnet(nn.Module):
         # energies = scatter(energies_i, batch, dim=0, dim_size=num_graphs)
 
         # NOTE: This is with torch.scatter_add_
-        output = torch.zeros(num_graphs, device=energies_i.device, dtype=energies_i.dtype)  # type: ignore
+        # Derive num_graphs from a tensor dimension tracked by torch.export
+        # rather than the scalar ``num_graphs`` argument, which would be
+        # specialized (constant-folded) during export.
+        n_graphs = num_atoms.shape[0]
+        output = torch.zeros(n_graphs, device=energies_i.device, dtype=energies_i.dtype)
         energies = output.scatter_add_(0, batch, energies_i)
 
         return energies  # [batch_size]

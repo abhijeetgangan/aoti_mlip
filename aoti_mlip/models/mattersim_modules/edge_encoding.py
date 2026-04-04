@@ -39,7 +39,7 @@ class SmoothBesselBasis(nn.Module):
         3. Complete basis in the range [0, r_max]
         """
         super(SmoothBesselBasis, self).__init__()
-        self.max_n = max_n  # type: ignore
+        self.max_n = max_n
         n = torch.arange(0, max_n).float()[None, :]
         PI = math.pi
         SQRT2 = math.sqrt(2)

@@ -203,7 +203,7 @@ class GraphConverter:
             z_len = (max_z - min_z) + max(self.twobody_cutoff, self.threebody_cutoff) * 5
             max_len = max(x_len, y_len, z_len)
             x_len = y_len = z_len = max_len
-            # lattice_matrix = np.eye(3) * max_len
+            cell = np.eye(3) * max_len
             pbc_ = np.array([1, 1, 1], dtype=int)
             warnings.warn(
                 "No PBC detected, using a large supercell with "
